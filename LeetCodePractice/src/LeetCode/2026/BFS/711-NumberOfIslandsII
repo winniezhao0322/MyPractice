@@ -1,0 +1,155 @@
+package LeetCode.Hard;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * 305
+ *
+ * A 2d grid map of m rows and n columns is initially filled with water. We may perform an addLand operation
+ * which turns the water at position (row, col) into a land.
+ *
+ * Given a list of positions to operate, count the number of islands after each addLand operation.
+ * An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically.
+ * You may assume all four edges of the grid are all surrounded by water
+ *
+ * Example:
+ * Given m = 3, n = 3, positions = [[0,0], [0,1], [1,2], [2,1]]. Initially, the 2d grid grid is filled with water.
+ * (Assume 0 represents water and 1 represents land).
+ * 0 0 0
+ * 0 0 0
+ * 0 0 0
+ *
+ * Operation #1: addLand(0, 0) turns the water at grid[0][0] into a land.
+ * 1 0 0
+ * 0 0 0   Number of islands = 1
+ * 0 0 0
+ *
+ * Operation #2: addLand(0, 1) turns the water at grid[0][1] into a land.
+ * 1 1 0
+ * 0 0 0   Number of islands = 1
+ * 0 0 0
+ *
+ * Operation #3: addLand(1, 2) turns the water at grid[1][2] into a land.
+ * 1 1 0
+ * 0 0 1   Number of islands = 2
+ * 0 0 0
+ *
+ * Operation #4: addLand(2, 1) turns the water at grid[2][1] into a land.
+ * 1 1 0
+ * 0 0 1   Number of islands = 3
+ * 0 1 0
+ * We return the result as an array: [1, 1, 2, 3].
+
+ * Created by WinnieZhao on 4/24/2017.
+ */
+public class NumberOfIslandsII {
+
+    int[][] dirs = {{0, 1}, {1, 0}, {-1, 0}, {0, -1}};
+    
+    int[][] dirs = new int[][] {{0,1}, {0,-1}, {1,0}, {-1,0}};
+
+    public int numDistinctIslands2(int[][] grid) {
+        int m = grid.length;
+        int n = grid[0].length;
+
+        boolean[][] visited = new boolean[m][n];
+        Set<String> distinctIslands = new HashSet<>();
+
+        for (int i=0; i<m; i++) {
+            for (int j=0; j<n; j++) {
+                if (grid[i][j] == 1 && !visited[i][j]) {
+                    // store all x,y cells for one island
+                    Set<int[]> island = new HashSet<>(); 
+
+                    dfs(grid, i, j, visited, island);
+                    distinctIslands.add(getCanonicalSignature(island));
+                }
+            }
+        }
+
+        return distinctIslands.size();
+    }
+
+    // 对于每一个坐标位置，其实总共有8种变换可能，x和y都可以分别变为相反数，
+    // 且也可以同时变为相反数，再加上其本身，这就4种了.
+    // 同时，上面的每一种情况都可以交换x和y的位置，这样总共就有8中变换方法，
+    // 每一种情况都要考虑，所以使用8个大小相同的数组来保存各自所有的点
+    private String getCanonicalSignature(Set<int[]> island) {
+        // 1. 创建 8 个独立的 List，分别存放 8 种旋转/翻转后的形状
+        List<int[]>[] shapes = new ArrayList[8];
+        for (int i = 0; i < 8; i++) {
+            shapes[i] = new ArrayList<>();
+        }
+
+        // For example, if there are 4 points in the island
+        /**
+        shapes (Outer List: Size = 8)
+        │
+        ├── shapes.get(0) -> List of 4 points -> [ (x1, y1),   (x2, y2),   (x3, y3),   (x4, y4)   ]  (Shape 1: Original)
+        ├── shapes.get(1) -> List of 4 points -> [ (x1, -y1),  (x2, -y2),  (x3, -y3),  (x4, -y4)  ]  (Shape 2: Flip Y)
+        ├── shapes.get(2) -> List of 4 points -> [ (-x1, y1),  (-x2, y2),  (-x3, y3),  (-x4, y4)  ]  (Shape 3: Flip X)
+        ├── shapes.get(3) -> List of 4 points -> [ (-x1, -y1), (-x2, -y2), (-x3, -y3), (-x4, -y4) ]  (Shape 4: Rotate 180°)
+        ├── shapes.get(4) -> List of 4 points -> [ (y1, x1),   (y2, x2),   (y3, x3),   (y4, x4)   ]  (Shape 5: Swap Axes)
+        ├── shapes.get(5) -> List of 4 points -> [ (y1, -x1),  (y2, -x2),  (y3, -x3),  (y4, -x4)  ]  (Shape 6)
+        ├── shapes.get(6) -> List of 4 points -> [ (-y1, x1),  (-y2, x2),  (-y3, x3),  (-y4, x4)  ]  (Shape 7)
+        └── shapes.get(7) -> List of 4 points -> [ (-y1, -x1), (-y2, -x2), (-y3, -x3), (-y4, -x4) ]  (Shape 8)
+        **/
+        // 2. 遍历岛屿中的每一个点，将其 8 种变体分别存入对应的 Shape 中
+        for (int[] cell : island) {
+            int x = cell[0];
+            int y = cell[1];
+
+            shapes[0].add(new int[]{x, y});
+            shapes[1].add(new int[]{x, -y});
+            shapes[2].add(new int[]{-x, y});
+            shapes[3].add(new int[]{-x, -y});
+            shapes[4].add(new int[]{y, x});
+            shapes[5].add(new int[]{-y, -x});
+            shapes[6].add(new int[]{y, -x});
+            shapes[7].add(new int[]{-y, x});
+        }
+
+        // 3. 对 8 个形状分别进行：内部点排序 + 相对坐标平移
+        List<String> canonicalCandidates = new ArrayList<>();
+
+        for (List<int[]> shape : shapes) {
+            // Sort points lexicographically
+            shape.sort((a, b) -> a[0] != b[0] ? Integer.compare(a[0], b[0]) : Integer.compare(a[1], b[1]));
+
+            // Shift top-leftmost point (shape.get(0)) to (0,0)
+            int ox = shape.get(0)[0];
+            int oy = shape.get(0)[1];
+            
+            StringBuilder sb = new StringBuilder();
+            for (int[] pt : shape) {
+                sb.append(pt[0] - ox).append(':').append(pt[1] - oy).append(';');
+            }
+            canonicalCandidates.add(sb.toString());
+        }
+
+        // 4. 对这 8 个已经归一化的形状进行整体排序，挑选出字典序最小的那个作为唯一代表
+        Collections.sort(canonicalCandidates);
+
+        // 5. 返回挑选出的最小形状（Canonical Shape）
+        return canonicalCandidates.get(0);
+    }
+
+    private void dfs(int[][] grid, int x, int y, boolean[][] visited, Set<int[]> island) {
+        int m = grid.length;
+        int n = grid[0].length;
+
+        if (x < 0 || y < 0 || x >= m || y >=n || visited[x][y] || grid[x][y] !=1) {
+            return;
+        }
+
+        visited[x][y] = true;
+        island.add(new int[] {x, y});
+
+        for (int[] dir : dirs) {
+            dfs(grid, x + dir[0], y + dir[1], visited, island);
+        }
+    }
+
+}
